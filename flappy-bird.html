@@ -2,9 +2,28 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flappy Bird</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird Premium</title>
     <style>
+        :root {
+            --sky-day: linear-gradient(to bottom, #70c5ce, #4da6b8);
+            --sky-night: linear-gradient(to bottom, #0a1128, #001f54);
+            --bird-color: #FFD700;
+            --pipe-color: #4CAF50;
+            --coin-color: #FFC107;
+            --cloud-color: rgba(255, 255, 255, 0.8);
+            --powerup-magnet: #9C27B0;
+            --powerup-shield: #2196F3;
+            --powerup-turbo: #F44336;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -12,10 +31,10 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #70c5ce;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             overflow: hidden;
             touch-action: manipulation;
+            background-color: #222;
         }
         
         #game-container {
@@ -24,29 +43,70 @@
             max-width: 360px;
             height: 640px;
             overflow: hidden;
-            background-color: #70c5ce;
             border: 2px solid #000;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
         }
         
         #game-canvas {
             display: block;
-            background-color: #70c5ce;
+            background: var(--sky-day);
+            transition: background 2s ease;
         }
         
-        #score {
+        /* Elementos de UI */
+        #score-container {
             position: absolute;
             top: 20px;
             left: 0;
             right: 0;
-            text-align: center;
-            font-size: 40px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
             z-index: 10;
         }
         
-        #game-over {
+        #score, #coins {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            padding: 5px 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        #coins::before {
+            content: "🪙";
+            margin-right: 5px;
+            font-size: 18px;
+        }
+        
+        #powerups {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .powerup-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Telas de jogo */
+        .game-screen {
             position: absolute;
             top: 0;
             left: 0;
@@ -56,302 +116,1290 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 20;
-        }
-        
-        #game-over-text {
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 100;
             color: white;
-            font-size: 48px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
-        
-        #restart-btn {
-            padding: 10px 20px;
-            font-size: 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
         }
         
         #start-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 30;
         }
         
-        #title {
-            color: white;
+        #pause-screen {
+            display: none;
+        }
+        
+        #game-over-screen {
+            display: none;
+        }
+        
+        .screen-title {
             font-size: 48px;
             font-weight: bold;
             margin-bottom: 30px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            color: #FFD700;
         }
         
-        #start-btn {
-            padding: 10px 20px;
-            font-size: 20px;
-            background-color: #FFD700;
-            color: black;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        
-        #instructions {
-            color: white;
-            font-size: 16px;
-            margin-top: 20px;
+        .screen-subtitle {
+            font-size: 18px;
+            margin-bottom: 30px;
             text-align: center;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            max-width: 80%;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 10px;
+            min-width: 180px;
+            text-align: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: #FFD700;
+            color: #000;
+        }
+        
+        .btn-secondary {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #F44336;
+            color: white;
+        }
+        
+        #stats-container {
+            margin: 20px 0;
+            width: 80%;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+        
+        /* Menu de skins */
+        #skin-selector {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .skin-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .skin-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .skin-option.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 10px #FFD700;
+        }
+        
+        /* Efeitos de partículas */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        /* Modo noturno */
+        .night-mode {
+            background: var(--sky-night);
+        }
+        
+        /* Nuvens */
+        .cloud {
+            position: absolute;
+            background: var(--cloud-color);
+            border-radius: 50%;
+            filter: blur(5px);
+            z-index: 1;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
         <canvas id="game-canvas" width="360" height="640"></canvas>
-        <div id="score">0</div>
         
-        <div id="game-over">
-            <div id="game-over-text">Game Over</div>
-            <button id="restart-btn">Jogar Novamente</button>
+        <!-- Elementos de UI -->
+        <div id="score-container">
+            <div id="score">0</div>
+            <div id="coins">0</div>
         </div>
         
-        <div id="start-screen">
-            <div id="title">Flappy Bird</div>
-            <button id="start-btn">Começar</button>
-            <div id="instructions">Toque na tela para fazer o pássaro voar</div>
+        <div id="powerups"></div>
+        
+        <!-- Telas do jogo -->
+        <div id="start-screen" class="game-screen">
+            <h1 class="screen-title">Flappy Bird Premium</h1>
+            <p class="screen-subtitle">Desvie dos canos, colete moedas e power-ups para marcar pontos!</p>
+            
+            <div id="skin-selector">
+                <div class="skin-option selected" data-skin="yellow" style="background-color: #FFD700;"></div>
+                <div class="skin-option" data-skin="red" style="background-color: #F44336;"></div>
+                <div class="skin-option" data-skin="blue" style="background-color: #2196F3;"></div>
+            </div>
+            
+            <button id="start-btn" class="btn btn-primary">Começar</button>
+            <button id="mode-btn" class="btn btn-secondary">Modo Infinito</button>
+            
+            <div id="instructions">
+                <p>Toque na tela ou pressione ESPAÇO para pular</p>
+                <p>Colete moedas para desbloquear novas skins</p>
+            </div>
+        </div>
+        
+        <div id="pause-screen" class="game-screen">
+            <h1 class="screen-title">Jogo Pausado</h1>
+            <button id="resume-btn" class="btn btn-primary">Continuar</button>
+            <button id="restart-btn" class="btn btn-secondary">Reiniciar</button>
+            <button id="quit-btn" class="btn btn-danger">Sair</button>
+        </div>
+        
+        <div id="game-over-screen" class="game-screen">
+            <h1 class="screen-title">Game Over</h1>
+            
+            <div id="stats-container">
+                <div class="stat-row">
+                    <span>Pontuação:</span>
+                    <span id="final-score">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Moedas:</span>
+                    <span id="final-coins">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Recorde:</span>
+                    <span id="high-score">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Combo Máximo:</span>
+                    <span id="max-combo">0</span>
+                </div>
+            </div>
+            
+            <button id="play-again-btn" class="btn btn-primary">Jogar Novamente</button>
+            <button id="main-menu-btn" class="btn btn-secondary">Menu Principal</button>
         </div>
     </div>
 
     <script>
-        // Elementos do jogo
+        // Configurações do jogo
+        const CONFIG = {
+            GRAVITY: 0.4,
+            JUMP_FORCE: -8,
+            BIRD_WIDTH: 34,
+            BIRD_HEIGHT: 24,
+            PIPE_WIDTH: 60,
+            PIPE_GAP: 150,
+            PIPE_MIN_HEIGHT: 50,
+            COIN_SIZE: 20,
+            CLOUD_COUNT: 5,
+            NIGHT_MODE_SCORE: 30,
+            POWERUP_DURATION: 10000, // 10 segundos
+            POWERUP_SPAWN_RATE: 0.1, // 10% de chance
+            COMBO_TIME: 2000 // 2 segundos para manter combo
+        };
+
+        // Elementos do DOM
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
-        const gameOverScreen = document.getElementById('game-over');
-        const restartBtn = document.getElementById('restart-btn');
+        const coinsElement = document.getElementById('coins');
+        const powerupsElement = document.getElementById('powerups');
         const startScreen = document.getElementById('start-screen');
+        const pauseScreen = document.getElementById('pause-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
         const startBtn = document.getElementById('start-btn');
-        
-        // Ajusta o tamanho do canvas para o dispositivo móvel
-        function resizeCanvas() {
-            const container = document.getElementById('game-container');
-            const width = Math.min(container.clientWidth, 360);
-            const height = Math.min(container.clientHeight, 640);
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            // Ajusta a escala para manter as proporções do jogo
-            ctx.scale(width / 360, height / 640);
-        }
-        
-        // Imagens do jogo
-        const birdImg = new Image();
-        birdImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjRkZENzAwIiBkPSJNNDQ4IDI1NkMwIDI1NiAwIDI1NiA0NDggMjU2czAgMTI4IDAgMTI4SDQ0OFYyNTZ6Ii8+PHBhdGggZmlsbD0iI0ZGQkMwMCIgZD0iTTQ0OCAyNTZDNDQ4IDI1NiA0NDggMTI4IDQ0OCAxMjhzLTQ0OCAwLTQ0OCAwYzAgNzEuMSA1Ny40IDEyOCAxMjggMTI4czMyNiAwIDMyNiAwYzAgNzEuMSA1Ny40IDEyOCAxMjggMTI4SDQ0OFYyNTZ6Ii8+PHBhdGggZmlsbD0iI0ZGRUIzQyIgZD0iTTQ0OCAxMjhDNDQ4IDU2LjkgMzkwLjYgMCAzMjAgMGMtNzAuNiAwLTEyOCA1Ni45LTEyOCAxMjhzNTcuNCAxMjggMTI4IDEyOFMzMjAgMjU2IDMyMCAyNTZjNzAuNiAwIDEyOC01Ni45IDEyOC0xMjh6Ii8+PHBhdGggZmlsbD0iIzAwMCIgZD0iTTM1MiAxNjBjMCAxNy43LTE0LjMgMzItMzIgMzJzLTMyLTE0LjMtMzItMzIgMTQuMy0zMiAzMi0zMiAzMiAxNC4zIDMyIDMyeiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0zNTIgMTYwYzAgOC44LTcuMiAxNi0xNiAxNnMtMTYtNy4yLTE2LTE2IDcuMi0xNiAxNi0xNiAxNiA3LjIgMTYgMTZ6Ii8+PHBhdGggZmlsbD0jIzAwMCBkPSJNMzIwIDE5MmMwIDguOC03LjIgMTYtMTYgMTZzLTE2LTcuMi0xNi0xNiA3LjItMTYgMTYtMTYgMTYgNy4yIDE2IDE2eiIvPjwvc3ZnPg==';
-        
-        const pipeTopImg = new Image();
-        pipeTopImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgNTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iIzRDQUY1MCIvPjxwYXRoIGQ9Ik0wIDBMNTAgLTUwTDEwMCAwWiIgZmlsbD0iIzRDQUY1MCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
-        
-        const pipeBottomImg = new Image();
-        pipeBottomImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgNTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iIzRDQUY1MCIvPjxwYXRoIGQ9Ik0wIDUwMEw1MCA1NTBMMTAwIDUwMFoiIGZpbGw9IiM0Q0FGNTAiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+';
-        
-        const backgroundImg = new Image();
-        backgroundImg.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNjAgNjQwIj48cmVjdCB3aWR0aD0iMzYwIiBoZWlnaHQ9IjY0MCIgZmlsbD0iIzcwYzVjZSIvPjxjaXJjbGUgY3g9IjMwMCIgY3k9IjUwMCIgcj0iNDAiIGZpbGw9IiNGRkYiIG9wYWNpdHk9IjAuMiIvPjxjaXJjbGUgY3g9IjE1MCIgY3k9IjQwMCIgcj0iMzAiIGZpbGw9IiNGRkYiIG9wYWNpdHk9IjAuMiIvPjxjaXJjbGUgY3g9IjIwMCIgY3k9IjMwMCIgcj0iNTAiIGZpbGw9IiNGRkYiIG9wYWNpdHk9IjAuMiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iMjAwIiByPSI0MCIgZmlsbD0iI0ZGRiIgb3BhY2l0eT0iMC4yIi8+PC9zdmc+';
-        
+        const resumeBtn = document.getElementById('resume-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const mainMenuBtn = document.getElementById('main-menu-btn');
+        const modeBtn = document.getElementById('mode-btn');
+        const finalScoreElement = document.getElementById('final-score');
+        const finalCoinsElement = document.getElementById('final-coins');
+        const highScoreElement = document.getElementById('high-score');
+        const maxComboElement = document.getElementById('max-combo');
+        const skinOptions = document.querySelectorAll('.skin-option');
+
         // Variáveis do jogo
-        let bird = {
-            x: 60,
-            y: 320,
-            width: 34,
-            height: 24,
-            velocity: 0,
-            gravity: 0.4,
-            jumpForce: -8,
-            rotation: 0
+        let gameState = {
+            bird: {
+                x: 60,
+                y: 320,
+                width: CONFIG.BIRD_WIDTH,
+                height: CONFIG.BIRD_HEIGHT,
+                velocity: 0,
+                gravity: CONFIG.GRAVITY,
+                jumpForce: CONFIG.JUMP_FORCE,
+                rotation: 0,
+                skin: 'yellow',
+                wingState: 0,
+                wingDirection: 1
+            },
+            pipes: [],
+            coins: [],
+            powerups: [],
+            clouds: [],
+            particles: [],
+            score: 0,
+            coinsCollected: 0,
+            highScore: localStorage.getItem('flappyHighScore') || 0,
+            totalCoins: localStorage.getItem('flappyTotalCoins') || 0,
+            gameSpeed: 2,
+            frameCount: 0,
+            gameStarted: false,
+            gameOver: false,
+            paused: false,
+            infiniteMode: false,
+            nightMode: false,
+            combo: 0,
+            maxCombo: 0,
+            lastPipePassed: 0,
+            activePowerups: {
+                magnet: { active: false, endTime: 0 },
+                shield: { active: false, endTime: 0 },
+                turbo: { active: false, endTime: 0 }
+            },
+            animationFrameId: null,
+            audioContext: null,
+            sounds: {}
         };
-        
-        let pipes = [];
-        let score = 0;
-        let highScore = 0;
-        let gameSpeed = 2;
-        let gameStarted = false;
-        let gameOver = false;
-        let frameCount = 0;
-        
-        // Função para reiniciar o jogo
-        function resetGame() {
-            bird.y = 320;
-            bird.velocity = 0;
-            bird.rotation = 0;
-            pipes = [];
-            score = 0;
-            scoreElement.textContent = '0';
-            gameSpeed = 2;
-            gameOver = false;
-            gameOverScreen.style.display = 'none';
-            gameStarted = true;
-        }
-        
-        // Função para criar canos
-        function createPipe() {
-            const gap = 150;
-            const topHeight = Math.floor(Math.random() * (canvas.height - gap - 200)) + 50;
-            const bottomHeight = canvas.height - topHeight - gap;
+
+        // Cores das skins
+        const SKIN_COLORS = {
+            yellow: '#FFD700',
+            red: '#F44336',
+            blue: '#2196F3'
+        };
+
+        // Inicialização do jogo
+        function init() {
+            // Configura canvas
+            canvas.width = 360;
+            canvas.height = 640;
             
-            pipes.push({
-                x: canvas.width,
-                topHeight: topHeight,
-                bottomHeight: bottomHeight,
-                width: 60,
-                passed: false
+            // Carrega dados salvos
+            loadGameData();
+            
+            // Configura eventos
+            setupEventListeners();
+            
+            // Cria nuvens iniciais
+            createInitialClouds();
+            
+            // Inicializa áudio
+            initAudio();
+            
+            // Mostra tela inicial
+            showStartScreen();
+        }
+
+        // Carrega dados do jogo salvos
+        function loadGameData() {
+            const savedHighScore = localStorage.getItem('flappyHighScore');
+            const savedTotalCoins = localStorage.getItem('flappyTotalCoins');
+            const savedSkin = localStorage.getItem('flappySkin');
+            
+            if (savedHighScore) gameState.highScore = parseInt(savedHighScore);
+            if (savedTotalCoins) gameState.totalCoins = parseInt(savedTotalCoins);
+            if (savedSkin && SKIN_COLORS[savedSkin]) {
+                gameState.bird.skin = savedSkin;
+                document.querySelector(`.skin-option[data-skin="${savedSkin}"]`).classList.add('selected');
+            }
+        }
+
+        // Configura listeners de eventos
+        function setupEventListeners() {
+            // Controles
+            canvas.addEventListener('click', handleJump);
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') handleJump();
+                if (e.code === 'Escape') togglePause();
+            });
+            
+            // Botões da UI
+            startBtn.addEventListener('click', startGame);
+            modeBtn.addEventListener('click', toggleGameMode);
+            resumeBtn.addEventListener('click', togglePause);
+            restartBtn.addEventListener('click', restartGame);
+            quitBtn.addEventListener('click', quitToMainMenu);
+            playAgainBtn.addEventListener('click', restartGame);
+            mainMenuBtn.addEventListener('click', showStartScreen);
+            
+            // Seleção de skins
+            skinOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    const skin = option.dataset.skin;
+                    if (skin && SKIN_COLORS[skin]) {
+                        // Remove seleção anterior
+                        document.querySelector('.skin-option.selected').classList.remove('selected');
+                        // Adiciona nova seleção
+                        option.classList.add('selected');
+                        // Atualiza skin
+                        gameState.bird.skin = skin;
+                        localStorage.setItem('flappySkin', skin);
+                    }
+                });
             });
         }
-        
-        // Função para atualizar o jogo
-        function update() {
-            if (!gameStarted || gameOver) return;
-            
-            // Atualiza o pássaro
-            bird.velocity += bird.gravity;
-            bird.y += bird.velocity;
-            bird.rotation = Math.min(bird.velocity * 3, 25);
-            
-            // Cria novos canos
-            if (frameCount % 120 === 0) {
-                createPipe();
+
+        // Inicializa sistema de áudio
+        function initAudio() {
+            try {
+                gameState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Efeitos sonoros básicos (seriam carregados de arquivos reais em produção)
+                gameState.sounds = {
+                    jump: createSound(200, 'sawtooth', 0.1, 0.02),
+                    coin: createSound(800, 'square', 0.1, 0.05),
+                    powerup: createSound(400, 'sine', 0.2, 0.1),
+                    crash: createSound(150, 'sawtooth', 0.3, 0.3),
+                    score: createSound(1000, 'sine', 0.1, 0.02)
+                };
+            } catch (e) {
+                console.warn('AudioContext não suportado ou bloqueado pelo navegador');
             }
-            frameCount++;
-            
-            // Atualiza os canos
-            for (let i = 0; i < pipes.length; i++) {
-                pipes[i].x -= gameSpeed;
-                
-                // Verifica se o pássaro passou pelo cano
-                if (!pipes[i].passed && pipes[i].x + pipes[i].width < bird.x) {
-                    pipes[i].passed = true;
-                    score++;
-                    scoreElement.textContent = score.toString();
+        }
+
+        // Cria um som simples (simulação)
+        function createSound(freq, type, vol, duration) {
+            return {
+                play: () => {
+                    if (!gameState.audioContext) return;
                     
-                    // Aumenta a dificuldade
-                    if (score % 5 === 0) {
-                        gameSpeed += 0.2;
-                    }
+                    const oscillator = gameState.audioContext.createOscillator();
+                    const gainNode = gameState.audioContext.createGain();
+                    
+                    oscillator.type = type;
+                    oscillator.frequency.value = freq;
+                    gainNode.gain.value = vol;
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(gameState.audioContext.destination);
+                    
+                    oscillator.start();
+                    gainNode.gain.exponentialRampToValueAtTime(
+                        0.001,
+                        gameState.audioContext.currentTime + duration
+                    );
+                    oscillator.stop(gameState.audioContext.currentTime + duration);
                 }
-                
-                // Verifica colisão com os canos
-                if (
-                    bird.x + bird.width / 2 > pipes[i].x && 
-                    bird.x - bird.width / 2 < pipes[i].x + pipes[i].width && 
-                    (bird.y - bird.height / 2 < pipes[i].topHeight || 
-                     bird.y + bird.height / 2 > canvas.height - pipes[i].bottomHeight)
-                ) {
+            };
+        }
+
+        // Mostra tela inicial
+        function showStartScreen() {
+            cancelAnimationFrame(gameState.animationFrameId);
+            gameState.gameStarted = false;
+            
+            startScreen.style.display = 'flex';
+            pauseScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Atualiza UI com dados salvos
+            coinsElement.textContent = gameState.totalCoins;
+        }
+
+        // Inicia o jogo
+        function startGame() {
+            resetGame();
+            gameState.gameStarted = true;
+            gameState.gameOver = false;
+            
+            startScreen.style.display = 'none';
+            
+            // Inicia loop do jogo
+            gameLoop();
+        }
+
+        // Alterna entre modos de jogo
+        function toggleGameMode() {
+            gameState.infiniteMode = !gameState.infiniteMode;
+            modeBtn.textContent = gameState.infiniteMode ? 'Modo Normal' : 'Modo Infinito';
+            modeBtn.classList.toggle('btn-secondary');
+            modeBtn.classList.toggle('btn-primary');
+        }
+
+        // Reinicia o jogo
+        function restartGame() {
+            resetGame();
+            gameState.gameOver = false;
+            
+            pauseScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Inicia loop do jogo
+            gameLoop();
+        }
+
+        // Sai para o menu principal
+        function quitToMainMenu() {
+            showStartScreen();
+        }
+
+        // Pausa/despausa o jogo
+        function togglePause() {
+            if (!gameState.gameStarted || gameState.gameOver) return;
+            
+            gameState.paused = !gameState.paused;
+            
+            if (gameState.paused) {
+                cancelAnimationFrame(gameState.animationFrameId);
+                pauseScreen.style.display = 'flex';
+            } else {
+                gameLoop();
+                pauseScreen.style.display = 'none';
+            }
+        }
+
+        // Reseta o estado do jogo
+        function resetGame() {
+            gameState.bird = {
+                x: 60,
+                y: 320,
+                width: CONFIG.BIRD_WIDTH,
+                height: CONFIG.BIRD_HEIGHT,
+                velocity: 0,
+                gravity: CONFIG.GRAVITY,
+                jumpForce: CONFIG.JUMP_FORCE,
+                rotation: 0,
+                skin: gameState.bird.skin,
+                wingState: 0,
+                wingDirection: 1
+            };
+            
+            gameState.pipes = [];
+            gameState.coins = [];
+            gameState.powerups = [];
+            gameState.particles = [];
+            gameState.score = 0;
+            gameState.coinsCollected = 0;
+            gameState.gameSpeed = 2;
+            gameState.frameCount = 0;
+            gameState.combo = 0;
+            gameState.lastPipePassed = 0;
+            gameState.nightMode = false;
+            
+            // Atualiza UI
+            scoreElement.textContent = '0';
+            coinsElement.textContent = gameState.totalCoins;
+            
+            // Remove powerups ativos
+            gameState.activePowerups = {
+                magnet: { active: false, endTime: 0 },
+                shield: { active: false, endTime: 0 },
+                turbo: { active: false, endTime: 0 }
+            };
+            updatePowerupUI();
+            
+            // Reseta background
+            canvas.style.background = 'var(--sky-day)';
+            canvas.classList.remove('night-mode');
+        }
+
+        // Loop principal do jogo
+        function gameLoop() {
+            if (gameState.paused || gameState.gameOver) return;
+            
+            update();
+            draw();
+            
+            gameState.animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Atualiza lógica do jogo
+        function update() {
+            if (!gameState.gameStarted || gameState.paused || gameState.gameOver) return;
+            
+            gameState.frameCount++;
+            
+            // Atualiza pássaro
+            updateBird();
+            
+            // Atualiza canos
+            updatePipes();
+            
+            // Atualiza moedas
+            updateCoins();
+            
+            // Atualiza powerups
+            updatePowerups();
+            
+            // Atualiza partículas
+            updateParticles();
+            
+            // Atualiza nuvens
+            updateClouds();
+            
+            // Verifica colisões
+            checkCollisions();
+            
+            // Verifica modo noturno
+            checkNightMode();
+            
+            // Verifica combos
+            checkCombo();
+        }
+
+        // Atualiza estado do pássaro
+        function updateBird() {
+            // Aplica gravidade
+            gameState.bird.velocity += gameState.bird.gravity;
+            gameState.bird.y += gameState.bird.velocity;
+            
+            // Atualiza rotação
+            gameState.bird.rotation = Math.min(gameState.bird.velocity * 3, 25);
+            
+            // Animação das asas
+            gameState.bird.wingState += gameState.bird.wingDirection * 0.2;
+            if (gameState.bird.wingState > 1 || gameState.bird.wingState < -1) {
+                gameState.bird.wingDirection *= -1;
+            }
+            
+            // Limita posição vertical
+            if (gameState.bird.y + gameState.bird.height / 2 > canvas.height) {
+                if (gameState.infiniteMode) {
+                    gameState.bird.y = canvas.height - gameState.bird.height / 2;
+                    gameState.bird.velocity = 0;
+                } else {
                     endGame();
                 }
             }
             
-            // Remove canos que saíram da tela
-            pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
-            
-            // Verifica colisão com o chão ou teto
-            if (bird.y + bird.height / 2 > canvas.height || bird.y - bird.height / 2 < 0) {
-                endGame();
+            if (gameState.bird.y - gameState.bird.height / 2 < 0) {
+                gameState.bird.y = gameState.bird.height / 2;
+                gameState.bird.velocity = 0;
             }
         }
-        
-        // Função para desenhar o jogo
-        function draw() {
-            // Limpa o canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Desenha o fundo
-            ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
-            
-            // Desenha os canos
-            for (let pipe of pipes) {
-                // Cano de cima
-                ctx.save();
-                ctx.translate(pipe.x + pipe.width / 2, pipe.topHeight);
-                ctx.scale(1, -1);
-                ctx.drawImage(pipeTopImg, -pipe.width / 2, 0, pipe.width, pipe.topHeight);
-                ctx.restore();
+
+        // Atualiza canos
+        function updatePipes() {
+            // Gera novos canos
+            if (gameState.frameCount % 120 === 0) {
+                createPipe();
                 
-                // Cano de baixo
-                ctx.drawImage(pipeBottomImg, pipe.x, canvas.height - pipe.bottomHeight, pipe.width, pipe.bottomHeight);
+                // Chance de gerar powerup
+                if (Math.random() < CONFIG.POWERUP_SPAWN_RATE) {
+                    createPowerup();
+                }
             }
             
-            // Desenha o pássaro
-            ctx.save();
-            ctx.translate(bird.x, bird.y);
-            ctx.rotate(bird.rotation * Math.PI / 180);
-            ctx.drawImage(birdImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
-            ctx.restore();
-        }
-        
-        // Função para finalizar o jogo
-        function endGame() {
-            gameOver = true;
-            gameOverScreen.style.display = 'flex';
-            highScore = Math.max(highScore, score);
-        }
-        
-        // Loop do jogo
-        function gameLoop() {
-            update();
-            draw();
+            // Move e atualiza canos existentes
+            for (let i = 0; i < gameState.pipes.length; i++) {
+                gameState.pipes[i].x -= gameState.gameSpeed;
+                
+                // Verifica se o pássaro passou pelo cano
+                if (!gameState.pipes[i].passed && gameState.pipes[i].x + gameState.pipes[i].width < gameState.bird.x) {
+                    gameState.pipes[i].passed = true;
+                    gameState.score++;
+                    gameState.lastPipePassed = Date.now();
+                    
+                    // Aumenta combo
+                    gameState.combo++;
+                    if (gameState.combo > gameState.maxCombo) {
+                        gameState.maxCombo = gameState.combo;
+                    }
+                    
+                    scoreElement.textContent = gameState.score.toString();
+                    
+                    // Efeito sonoro
+                    if (gameState.sounds.score) gameState.sounds.score.play();
+                    
+                    // Aumenta dificuldade a cada 5 pontos
+                    if (gameState.score % 5 === 0) {
+                        gameState.gameSpeed += 0.2;
+                        
+                        // Efeito visual de turbo
+                        if (gameState.score % 10 === 0) {
+                            createParticles(gameState.bird.x, gameState.bird.y, 20, SKIN_COLORS[gameState.bird.skin]);
+                        }
+                    }
+                }
+            }
             
-            if (!gameOver) {
-                requestAnimationFrame(gameLoop);
+            // Remove canos que saíram da tela
+            gameState.pipes = gameState.pipes.filter(pipe => pipe.x + pipe.width > 0);
+        }
+
+        // Atualiza moedas
+        function updateCoins() {
+            // Move moedas
+            for (let i = 0; i < gameState.coins.length; i++) {
+                gameState.coins[i].x -= gameState.gameSpeed;
+                
+                // Efeito de ímã
+                if (gameState.activePowerups.magnet.active) {
+                    const dx = gameState.bird.x - gameState.coins[i].x;
+                    const dy = gameState.bird.y - gameState.coins[i].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 200) { // Raio do ímã
+                        const angle = Math.atan2(dy, dx);
+                        const force = 5 * (1 - distance / 200); // Força inversamente proporcional à distância
+                        
+                        gameState.coins[i].x += Math.cos(angle) * force;
+                        gameState.coins[i].y += Math.sin(angle) * force;
+                    }
+                }
+                
+                // Animação de rotação
+                gameState.coins[i].rotation += 0.1;
+            }
+            
+            // Remove moedas coletadas ou que saíram da tela
+            gameState.coins = gameState.coins.filter(coin => coin.x + CONFIG.COIN_SIZE > 0);
+        }
+
+        // Atualiza powerups
+        function updatePowerups() {
+            // Move powerups
+            for (let i = 0; i < gameState.powerups.length; i++) {
+                gameState.powerups[i].x -= gameState.gameSpeed;
+            }
+            
+            // Remove powerups coletados ou que saíram da tela
+            gameState.powerups = gameState.powerups.filter(powerup => powerup.x + 30 > 0);
+            
+            // Verifica powerups ativos
+            const now = Date.now();
+            for (const type in gameState.activePowerups) {
+                if (gameState.activePowerups[type].active && now > gameState.activePowerups[type].endTime) {
+                    gameState.activePowerups[type].active = false;
+                    updatePowerupUI();
+                    
+                    // Efeito visual ao terminar powerup
+                    if (type === 'shield') {
+                        createParticles(gameState.bird.x, gameState.bird.y, 15, '#2196F3');
+                    }
+                }
             }
         }
-        
-        // Event listeners
+
+        // Atualiza partículas
+        function updateParticles() {
+            for (let i = 0; i < gameState.particles.length; i++) {
+                gameState.particles[i].x += gameState.particles[i].vx;
+                gameState.particles[i].y += gameState.particles[i].vy;
+                gameState.particles[i].vy += gameState.particles[i].gravity;
+                gameState.particles[i].life--;
+            }
+            
+            // Remove partículas mortas
+            gameState.particles = gameState.particles.filter(p => p.life > 0);
+        }
+
+        // Atualiza nuvens
+        function updateClouds() {
+            for (let i = 0; i < gameState.clouds.length; i++) {
+                gameState.clouds[i].x -= gameState.clouds[i].speed * (gameState.nightMode ? 0.7 : 1);
+                
+                // Se a nuvem sair da tela, reposiciona à direita
+                if (gameState.clouds[i].x + gameState.clouds[i].width < 0) {
+                    gameState.clouds[i].x = canvas.width;
+                    gameState.clouds[i].y = Math.random() * (canvas.height / 2);
+                    gameState.clouds[i].speed = 0.2 + Math.random() * 0.5;
+                }
+            }
+        }
+
+        // Verifica colisões
+        function checkCollisions() {
+            // Colisão com canos
+            for (let pipe of gameState.pipes) {
+                if (checkPipeCollision(pipe)) {
+                    if (gameState.activePowerups.shield.active) {
+                        // Remove escudo ao invés de terminar o jogo
+                        gameState.activePowerups.shield.active = false;
+                        updatePowerupUI();
+                        createParticles(gameState.bird.x, gameState.bird.y, 20, '#2196F3');
+                    } else if (!gameState.infiniteMode) {
+                        endGame();
+                    }
+                    break;
+                }
+            }
+            
+            // Colisão com moedas
+            for (let i = 0; i < gameState.coins.length; i++) {
+                if (checkCoinCollision(gameState.coins[i])) {
+                    // Remove moeda
+                    gameState.coins.splice(i, 1);
+                    i--;
+                    
+                    // Adiciona pontos e moedas
+                    gameState.score += 5;
+                    gameState.coinsCollected++;
+                    gameState.totalCoins++;
+                    
+                    // Atualiza UI
+                    scoreElement.textContent = gameState.score.toString();
+                    coinsElement.textContent = gameState.totalCoins.toString();
+                    
+                    // Efeitos
+                    createParticles(gameState.coins[i]?.x || gameState.bird.x, gameState.coins[i]?.y || gameState.bird.y, 10, '#FFC107');
+                    if (gameState.sounds.coin) gameState.sounds.coin.play();
+                    
+                    // Salva moedas
+                    localStorage.setItem('flappyTotalCoins', gameState.totalCoins);
+                }
+            }
+            
+            // Colisão com powerups
+            for (let i = 0; i < gameState.powerups.length; i++) {
+                if (checkPowerupCollision(gameState.powerups[i])) {
+                    const type = gameState.powerups[i].type;
+                    
+                    // Ativa powerup
+                    gameState.activePowerups[type].active = true;
+                    gameState.activePowerups[type].endTime = Date.now() + CONFIG.POWERUP_DURATION;
+                    
+                    // Remove powerup
+                    gameState.powerups.splice(i, 1);
+                    i--;
+                    
+                    // Efeitos
+                    createParticles(gameState.powerups[i]?.x || gameState.bird.x, gameState.powerups[i]?.y || gameState.bird.y, 15, 
+                        type === 'magnet' ? '#9C27B0' : 
+                        type === 'shield' ? '#2196F3' : '#F44336');
+                    
+                    if (gameState.sounds.powerup) gameState.sounds.powerup.play();
+                    updatePowerupUI();
+                }
+            }
+        }
+
+        // Verifica modo noturno
+        function checkNightMode() {
+            if (gameState.score >= CONFIG.NIGHT_MODE_SCORE && !gameState.nightMode) {
+                gameState.nightMode = true;
+                canvas.classList.add('night-mode');
+                
+                // Efeito visual de transição
+                createParticles(canvas.width / 2, canvas.height / 2, 30, '#FFFFFF', 100);
+            } else if (gameState.score < CONFIG.NIGHT_MODE_SCORE && gameState.nightMode) {
+                gameState.nightMode = false;
+                canvas.classList.remove('night-mode');
+            }
+        }
+
+        // Verifica combo
+        function checkCombo() {
+            const now = Date.now();
+            if (now - gameState.lastPipePassed > CONFIG.COMBO_TIME) {
+                gameState.combo = 0;
+            }
+        }
+
+        // Cria um novo cano
+        function createPipe() {
+            // Altura do gap varia com a dificuldade
+            const dynamicGap = Math.max(CONFIG.PIPE_GAP - (gameState.score * 0.5), 100);
+            
+            const topHeight = Math.floor(
+                Math.random() * (canvas.height - dynamicGap - CONFIG.PIPE_MIN_HEIGHT * 2)
+            ) + CONFIG.PIPE_MIN_HEIGHT;
+            
+            const bottomHeight = canvas.height - topHeight - dynamicGap;
+            
+            const pipe = {
+                x: canvas.width,
+                topHeight: topHeight,
+                bottomHeight: bottomHeight,
+                width: CONFIG.PIPE_WIDTH,
+                passed: false,
+                moving: Math.random() > 0.7, // 30% de chance de ser móvel
+                moveDirection: Math.random() > 0.5 ? 1 : -1,
+                moveSpeed: 0.5 + Math.random() * 1
+            };
+            
+            gameState.pipes.push(pipe);
+            
+            // Chance de adicionar moedas no gap
+            if (Math.random() > 0.3) { // 70% de chance
+                const coinsCount = 1 + Math.floor(Math.random() * 3);
+                const coinYStart = topHeight + dynamicGap / 2 - (coinsCount * CONFIG.COIN_SIZE) / 2;
+                
+                for (let i = 0; i < coinsCount; i++) {
+                    gameState.coins.push({
+                        x: canvas.width + CONFIG.PIPE_WIDTH + 20,
+                        y: coinYStart + i * CONFIG.COIN_SIZE,
+                        size: CONFIG.COIN_SIZE,
+                        rotation: 0
+                    });
+                }
+            }
+        }
+
+        // Cria um powerup
+        function createPowerup() {
+            const types = ['magnet', 'shield', 'turbo'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            gameState.powerups.push({
+                x: canvas.width,
+                y: Math.random() * (canvas.height - 100) + 50,
+                type: type,
+                size: 30
+            });
+        }
+
+        // Cria partículas de efeito
+        function createParticles(x, y, count, color, baseLife = 60) {
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push({
+                    x: x,
+                    y: y,
+                    size: 3 + Math.random() * 5,
+                    color: color,
+                    vx: -1 + Math.random() * 2,
+                    vy: -1 + Math.random() * 2,
+                    gravity: 0.05,
+                    life: baseLife + Math.random() * 20
+                });
+            }
+        }
+
+        // Cria nuvens iniciais
+        function createInitialClouds() {
+            gameState.clouds = [];
+            for (let i = 0; i < CONFIG.CLOUD_COUNT; i++) {
+                gameState.clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height / 2),
+                    width: 60 + Math.random() * 80,
+                    height: 30 + Math.random() * 40,
+                    speed: 0.2 + Math.random() * 0.5
+                });
+            }
+        }
+
+        // Verifica colisão com cano
+        function checkPipeCollision(pipe) {
+            // Se estiver com escudo, não colide
+            if (gameState.activePowerups.shield.active) return false;
+            
+            // Verifica colisão com cano superior
+            if (gameState.bird.x + gameState.bird.width / 2 > pipe.x && 
+                gameState.bird.x - gameState.bird.width / 2 < pipe.x + pipe.width && 
+                gameState.bird.y - gameState.bird.height / 2 < pipe.topHeight) {
+                return true;
+            }
+            
+            // Verifica colisão com cano inferior
+            if (gameState.bird.x + gameState.bird.width / 2 > pipe.x && 
+                gameState.bird.x - gameState.bird.width / 2 < pipe.x + pipe.width && 
+                gameState.bird.y + gameState.bird.height / 2 > canvas.height - pipe.bottomHeight) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Verifica colisão com moeda
+        function checkCoinCollision(coin) {
+            const dx = gameState.bird.x - coin.x;
+            const dy = gameState.bird.y - coin.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            return distance < (gameState.bird.width / 2 + coin.size / 2);
+        }
+
+        // Verifica colisão com powerup
+        function checkPowerupCollision(powerup) {
+            const dx = gameState.bird.x - powerup.x;
+            const dy = gameState.bird.y - powerup.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            return distance < (gameState.bird.width / 2 + powerup.size / 2);
+        }
+
+        // Atualiza UI de powerups
+        function updatePowerupUI() {
+            powerupsElement.innerHTML = '';
+            
+            for (const type in gameState.activePowerups) {
+                if (gameState.activePowerups[type].active) {
+                    const remainingTime = Math.ceil((gameState.activePowerups[type].endTime - Date.now()) / 1000);
+                    
+                    const icon = document.createElement('div');
+                    icon.className = 'powerup-icon';
+                    icon.style.backgroundColor = 
+                        type === 'magnet' ? 'var(--powerup-magnet)' : 
+                        type === 'shield' ? 'var(--powerup-shield)' : 'var(--powerup-turbo)';
+                    
+                    icon.textContent = remainingTime;
+                    powerupsElement.appendChild(icon);
+                }
+            }
+        }
+
+        // Manipula pulo do pássaro
         function handleJump() {
-            if (!gameStarted) {
-                startScreen.style.display = 'none';
-                resetGame();
-                gameLoop();
+            if (!gameState.gameStarted) {
+                startGame();
                 return;
             }
             
-            if (!gameOver) {
-                bird.velocity = bird.jumpForce;
+            if (gameState.gameOver) return;
+            
+            if (gameState.paused) {
+                togglePause();
+                return;
+            }
+            
+            gameState.bird.velocity = gameState.bird.jumpForce;
+            
+            // Efeitos
+            createParticles(gameState.bird.x, gameState.bird.y + gameState.bird.height / 2, 5, SKIN_COLORS[gameState.bird.skin]);
+            if (gameState.sounds.jump) gameState.sounds.jump.play();
+        }
+
+        // Finaliza o jogo
+        function endGame() {
+            gameState.gameOver = true;
+            cancelAnimationFrame(gameState.animationFrameId);
+            
+            // Efeitos
+            createParticles(gameState.bird.x, gameState.bird.y, 30, '#F44336');
+            if (gameState.sounds.crash) gameState.sounds.crash.play();
+            
+            // Atualiza recorde
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('flappyHighScore', gameState.highScore);
+                
+                // Efeito de novo recorde
+                createParticles(canvas.width / 2, canvas.height / 2, 50, '#FFD700', 100);
+            }
+            
+            // Atualiza UI de game over
+            finalScoreElement.textContent = gameState.score;
+            finalCoinsElement.textContent = gameState.coinsCollected;
+            highScoreElement.textContent = gameState.highScore;
+            maxComboElement.textContent = gameState.maxCombo;
+            
+            // Mostra tela de game over
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // Renderiza o jogo
+        function draw() {
+            // Limpa canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Desenha nuvens
+            drawClouds();
+            
+            // Desenha canos
+            drawPipes();
+            
+            // Desenha moedas
+            drawCoins();
+            
+            // Desenha powerups
+            drawPowerups();
+            
+            // Desenha partículas
+            drawParticles();
+            
+            // Desenha pássaro
+            drawBird();
+            
+            // Efeito de turbo
+            if (gameState.activePowerups.turbo.active) {
+                drawTurboEffect();
             }
         }
-        
-        canvas.addEventListener('click', handleJump);
-        canvas.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            handleJump();
-        }, { passive: false });
-        
-        startBtn.addEventListener('click', function() {
-            startScreen.style.display = 'none';
-            resetGame();
-            gameLoop();
-        });
-        
-        restartBtn.addEventListener('click', function() {
-            resetGame();
-            gameLoop();
-        });
-        
+
+        // Desenha nuvens
+        function drawClouds() {
+            ctx.save();
+            
+            for (const cloud of gameState.clouds) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${gameState.nightMode ? 0.4 : 0.8})`;
+                
+                // Desenha várias partes para formar a nuvem
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.height / 2, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width / 3, cloud.y - cloud.height / 4, cloud.height / 2.5, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width / 2, cloud.y, cloud.height / 2.5, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.width / 1.5, cloud.y, cloud.height / 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // Desenha canos
+        function drawPipes() {
+            ctx.save();
+            
+            for (const pipe of gameState.pipes) {
+                // Cor do cano com variação para efeito visual
+                const pipeColor = gameState.nightMode ? 
+                    `hsl(120, 60%, ${20 + Math.sin(gameState.frameCount * 0.05) * 10}%)` : 
+                    `hsl(120, 60%, ${40 + Math.sin(gameState.frameCount * 0.05) * 10}%)`;
+                
+                ctx.fillStyle = pipeColor;
+                
+                // Cano superior
+                ctx.fillRect(pipe.x, 0, pipe.width, pipe.topHeight);
+                
+                // Detalhes no cano superior
+                ctx.fillStyle = gameState.nightMode ? 'rgba(0, 50, 0, 0.3)' : 'rgba(255, 255, 255, 0.2)';
+                for (let y = 10; y < pipe.topHeight; y += 30) {
+                    ctx.fillRect(pipe.x + 5, y, pipe.width - 10, 15);
+                }
+                
+                // Cano inferior
+                ctx.fillStyle = pipeColor;
+                ctx.fillRect(pipe.x, canvas.height - pipe.bottomHeight, pipe.width, pipe.bottomHeight);
+                
+                // Detalhes no cano inferior
+                ctx.fillStyle = gameState.nightMode ? 'rgba(0, 50, 0, 0.3)' : 'rgba(255, 255, 255, 0.2)';
+                for (let y = canvas.height - pipe.bottomHeight + 10; y < canvas.height; y += 30) {
+                    ctx.fillRect(pipe.x + 5, y, pipe.width - 10, 15);
+                }
+                
+                // Boca do cano (mais escura)
+                ctx.fillStyle = gameState.nightMode ? 'rgba(0, 30, 0, 0.8)' : 'rgba(0, 80, 0, 0.8)';
+                ctx.fillRect(pipe.x - 2, pipe.topHeight - 15, pipe.width + 4, 15);
+                ctx.fillRect(pipe.x - 2, canvas.height - pipe.bottomHeight, pipe.width + 4, 15);
+            }
+            
+            ctx.restore();
+        }
+
+        // Desenha moedas
+        function drawCoins() {
+            ctx.save();
+            
+            for (const coin of gameState.coins) {
+                ctx.save();
+                ctx.translate(coin.x, coin.y);
+                ctx.rotate(coin.rotation);
+                
+                // Disco da moeda
+                ctx.fillStyle = '#FFC107';
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Detalhes da moeda
+                ctx.fillStyle = '#FFA000';
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.size / 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFC107';
+                ctx.beginPath();
+                ctx.arc(0, 0, coin.size / 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brilho
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(coin.size / 4, -coin.size / 4, coin.size / 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            ctx.restore();
+        }
+
+        // Desenha powerups
+        function drawPowerups() {
+            ctx.save();
+            
+            for (const powerup of gameState.powerups) {
+                ctx.save();
+                ctx.translate(powerup.x, powerup.y);
+                
+                // Fundo do powerup
+                ctx.fillStyle = 
+                    powerup.type === 'magnet' ? 'var(--powerup-magnet)' : 
+                    powerup.type === 'shield' ? 'var(--powerup-shield)' : 'var(--powerup-turbo)';
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, powerup.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Ícone do powerup
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const icon = 
+                    powerup.type === 'magnet' ? 'M' : 
+                    powerup.type === 'shield' ? 'S' : 'T';
+                
+                ctx.fillText(icon, 0, 0);
+                
+                // Efeito de brilho
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, powerup.size / 2 + Math.sin(gameState.frameCount * 0.1) * 3, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+            
+            ctx.restore();
+        }
+
+        // Desenha partículas
+        function drawParticles() {
+            ctx.save();
+            
+            for (const particle of gameState.particles) {
+                ctx.globalAlpha = particle.life / 100;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // Desenha pássaro
+        function drawBird() {
+            ctx.save();
+            ctx.translate(gameState.bird.x, gameState.bird.y);
+            ctx.rotate(gameState.bird.rotation * Math.PI / 180);
+            
+            // Corpo do pássaro
+            ctx.fillStyle = SKIN_COLORS[gameState.bird.skin];
+            ctx.beginPath();
+            
+            // Forma oval do corpo
+            ctx.ellipse(0, 0, gameState.bird.width / 2, gameState.bird.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Asas (animadas)
+            ctx.fillStyle = `rgba(0, 0, 0, 0.2)`;
+            ctx.beginPath();
+            
+            // Asa esquerda
+            ctx.ellipse(
+                -gameState.bird.width / 4, 
+                0, 
+                gameState.bird.width / 3, 
+                gameState.bird.height / 3, 
+                Math.PI / 4 * gameState.bird.wingState, 
+                0, 
+                Math.PI * 2
+            );
+            
+            // Asa direita
+            ctx.ellipse(
+                gameState.bird.width / 4, 
+                0, 
+                gameState.bird.width / 3, 
+                gameState.bird.height / 3, 
+                -Math.PI / 4 * gameState.bird.wingState, 
+                0, 
+                Math.PI * 2
+            );
+            
+            ctx.fill();
+            
+            // Olho
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(gameState.bird.width / 4, -gameState.bird.height / 6, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(gameState.bird.width / 4, -gameState.bird.height / 6, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bico
+            ctx.fillStyle = '#FF5722';
+            ctx.beginPath();
+            ctx.moveTo(gameState.bird.width / 2, 0);
+            ctx.lineTo(gameState.bird.width / 2 + 10, -3);
+            ctx.lineTo(gameState.bird.width / 2 + 10, 3);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Escudo (se ativo)
+            if (gameState.activePowerups.shield.active) {
+                ctx.strokeStyle = 'rgba(33, 150, 243, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, gameState.bird.width / 2 + 5 + Math.sin(gameState.frameCount * 0.1) * 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+
+        // Desenha efeito de turbo
+        function drawTurboEffect() {
+            ctx.save();
+            
+            // Linhas de velocidade atrás do pássaro
+            for (let i = 0; i < 5; i++) {
+                const offset = -20 - i * 10 - (gameState.frameCount % 10);
+                const alpha = 0.7 - i * 0.1;
+                
+                ctx.strokeStyle = `rgba(244, 67, 54, ${alpha})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(gameState.bird.x + offset, gameState.bird.y - 5 + i * 2);
+                ctx.lineTo(gameState.bird.x + offset - 10, gameState.bird.y - 5 + i * 2);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(gameState.bird.x + offset, gameState.bird.y + 5 - i * 2);
+                ctx.lineTo(gameState.bird.x + offset - 10, gameState.bird.y + 5 - i * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+
         // Inicializa o jogo
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        init();
     </script>
 </body>
 </html>
